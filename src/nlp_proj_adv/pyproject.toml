@@ -1,0 +1,22 @@
+[project]
+name = "project20-advanced-readability"
+version = "0.1.0"
+description = "Readable, reproducible NLP comparison: handcrafted, TF-IDF, sentence embeddings"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "textstat>=0.7.4",
+    "openpyxl>=3.1",
+    "joblib>=1.3",
+    "tqdm>=4.66",
+    "sentence-transformers>=3.0",
+    "streamlit>=1.37",
+    "ipykernel>=6.29",
+    "ipython>=9.17.1",
+    "wordfreq>=3.1.1",
+    "nltk>=3.10.4",
+]
