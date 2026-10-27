@@ -65,7 +65,7 @@ def lexical_cohesion(sentences: list[str]) -> float:
     for left, right in zip(sets, sets[1:]): # left takes values from the original sets, while right takes values from sets[1:]. lets say sets = [{"cat", "eats"}, {"cat", "sleeps"}, {"dog", "sleeps"}],so in first iteration left will have {"cat", "eats"} and right will have {"cat", "sleeps"} and it keeps going like that
         union = left | right
         values.append(len(left & right) / len(union) if union else 0.0)  # It adds the similarity score of each consecutive sentence pair to the values list.
-    return float(mean(values))
+    return float(mean(values))  # calculates the average similarity across all consecutive sentence pairs
 
 
 def extract_features(text: str) -> dict[str, float]:
@@ -105,6 +105,8 @@ def chunk_document(text: str, words_per_chunk: int = 90) -> list[str]:
     return [" ".join(words[i:i + words_per_chunk]) for i in range(0, len(words), words_per_chunk)] or [""]
 
 
+#this function takes all our passages, divides them into smaller chunks, generates an embedding for each chunk using MiniLM,
+#then combines the chunk embeddings to create one 384-dimensional embedding array per passage.
 def document_embeddings(texts, encoder, batch_size: int = 32) -> np.ndarray:
     """Encode short chunks, then average + unit-normalize to get document vectors.
 
@@ -118,7 +120,7 @@ def document_embeddings(texts, encoder, batch_size: int = 32) -> np.ndarray:
     vectors = np.asarray(
         encoder.encode(chunks, batch_size=batch_size, show_progress_bar=True,
                        normalize_embeddings=True), dtype=np.float32
-    )
+    )  # encoder.encode() is the function that generates the embeddings using our pretrained MiniLM model.
     result = np.stack([vectors[a:b].mean(axis=0) for a, b in spans])
     norms = np.linalg.norm(result, axis=1, keepdims=True)
     return (result / np.maximum(norms, 1e-12)).astype(np.float32)
@@ -129,7 +131,7 @@ def semantic_cohesion(text: str, encoder) -> dict:
     sentences = split_sentences(text)
     if len(sentences) < 2:
         return {"mean": None, "pairs": [], "sentences": sentences}
-    vectors = np.asarray(encoder.encode(sentences, normalize_embeddings=True), dtype=float)
+    vectors = np.asarray(encoder.encode(sentences, normalize_embeddings=True), dtype=float)   
     similarities = np.sum(vectors[:-1] * vectors[1:], axis=1)
     return {
         "mean": float(similarities.mean()),
@@ -138,6 +140,7 @@ def semantic_cohesion(text: str, encoder) -> dict:
     }
 
 
+# this code returns one big numerical matrix containing all four types of features for every passage.
 def transform_texts(texts, representation: str, word_vectorizer, char_vectorizer,
                     feature_scaler, encoder=None, precomputed_features=None,
                     precomputed_embeddings=None):
@@ -150,7 +153,7 @@ def transform_texts(texts, representation: str, word_vectorizer, char_vectorizer
         precomputed_features if precomputed_features is not None else features_frame(texts)
     )
     manual = feature_scaler.transform(manual).astype(np.float32)
-    if representation == "Linguistic (RF)":
+    if representation == "Linguistic (Ridge)":
         return manual
 
     words = word_vectorizer.transform(texts)
@@ -172,7 +175,15 @@ def transform_texts(texts, representation: str, word_vectorizer, char_vectorizer
     if representation == "Hybrid all (Ridge)":
         return sparse.hstack([
             words, chars, sparse.csr_matrix(manual), sparse.csr_matrix(embeddings)
-        ], format="csr")
+        ], format="csr") # the function sparse.hstack simply combines the already calculated features into one matrix, ready for the model.
+    # sparse.csr_matrix(manual) : Converts the numerical array into a CSR sparse matrix. 
+    # A sparse matrix efficiently stores numerical data, particularly when many values are zero, as in TF-IDF.
+    # Le format CSR stocke principalement les valeurs non nulles ainsi que leurs positions, 
+    # au lieu de stocker explicitement tous les zéros, ce qui permet de réduire la consommation de mémoire.
+    # la conversion des manual et embeddings en sparse matrice n'était pas fait dans le but de reduction de stockage,
+    # par contre Je les ai converties en CSR pour avoir un format cohérent avec words et chars, qui sont déjà des matrices creuses (sparse),
+    # pour que je puisse les combiner.
+    # format="csr" signifie que la matrice finale retournée par sparse.hstack() doit être au format CSR
     raise ValueError(f"Unknown representation: {representation}")
 
 
