@@ -100,7 +100,7 @@ def features_frame(texts) -> pd.DataFrame:
 
 
 def chunk_document(text: str, words_per_chunk: int = 90) -> list[str]:
-    """Create short text chunks to reduce transformer truncation."""
+    """Create short text chunks to reduce transformer truncation"""
     words = str(text).split()
     return [" ".join(words[i:i + words_per_chunk]) for i in range(0, len(words), words_per_chunk)] or [""]
 
