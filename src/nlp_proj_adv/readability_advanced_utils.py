@@ -107,7 +107,23 @@ def chunk_document(text: str, words_per_chunk: int = 90) -> list[str]:
 
 #this function takes all our passages, divides them into smaller chunks, generates an embedding for each chunk using MiniLM,
 #then combines the chunk embeddings to create one 384-dimensional embedding array per passage.
+def document_embeddings(texts, encoder, batch_size: int = 32) -> np.ndarray:
+    """Encode short chunks, then average + unit-normalize to get document vectors.
 
+    `encoder` is a pretrained, frozen SentenceTransformer; no labels are used.
+    """
+    chunks, spans = [], []
+    for text in texts:
+        beginning = len(chunks)
+        chunks.extend(chunk_document(text))
+        spans.append((beginning, len(chunks)))
+    vectors = np.asarray(
+        encoder.encode(chunks, batch_size=batch_size, show_progress_bar=True,
+                       normalize_embeddings=True), dtype=np.float32
+    )  # encoder.encode() is the function that generates the embeddings using our pretrained MiniLM model.
+    result = np.stack([vectors[a:b].mean(axis=0) for a, b in spans])
+    norms = np.linalg.norm(result, axis=1, keepdims=True)
+    return (result / np.maximum(norms, 1e-12)).astype(np.float32)
 
 
 def semantic_cohesion(text: str, encoder) -> dict:
